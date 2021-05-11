@@ -25,27 +25,48 @@ class PgDumpLite
   end
 
   def copy_partial_tables
-    tmp_dir = "tmp"
-    run_cmd("mkdir #{tmp_dir}")
+    init_tmp_dir
     partial_tables.each do |table|
       table_name = table.keys.first
-      partial_select = table[table_name]
-      command = %{
-                    PGPASSWORD=#{src_db_password} psql -U #{src_db_username} -h #{src_db_host} #{src_db_name}
-                    -c "\\COPY (#{partial_select}) TO '#{tmp_dir}/#{table_name}.csv' WITH (DELIMITER ',', FORMAT CSV)"
-                 }.then { |x| compact_multiline_string(x) }
-      run_cmd(command)
-
-      command = %{
-                    PGPASSWORD=#{dest_db_password} psql -U #{dest_db_username} -h #{dest_db_host} #{dest_db_name}
-                    -c "\\COPY #{table_name} FROM '#{tmp_dir}/#{table_name}.csv' CSV"
-                 }.then { |x| compact_multiline_string(x) }
-      run_cmd(command)
-    end
-    run_cmd("rm -rf #{tmp_dir}/")
+      export_statement = table.values.first
+      export_file = export_partial_tables_from_src(table_name, export_statement)
+      import_partial_tables_into_dest(table_name, export_file)
+        .then { |_| rm_file(export_file) }
+   end
+    rm_tmp_dir
   end
 
   private
+
+  def init_tmp_dir
+    run_cmd("mkdir #{tmp_dirname}")
+  end
+
+  def rm_tmp_dir
+    run_cmd("rm -rf #{tmp_dirname}/")
+  end
+
+  def rm_file(file)
+    run_cmd("rm #{file}")
+  end
+
+  def export_partial_tables_from_src(table_name, export_statement)
+    export_file = "#{tmp_dirname}/#{table_name}.csv"
+    command = %{
+                 PGPASSWORD=#{src_db_password} psql -U #{src_db_username} -h #{src_db_host} #{src_db_name}
+                 -c "\\COPY (#{export_statement}) TO '#{export_file}' WITH (DELIMITER ',', FORMAT CSV)"
+               }.then { |x| compact_multiline_string(x) }
+    run_cmd(command)
+    export_file
+  end
+
+  def import_partial_tables_into_dest(table_name, export_file)
+    command = %{
+                 PGPASSWORD=#{dest_db_password} psql -U #{dest_db_username} -h #{dest_db_host} #{dest_db_name}
+                 -c "\\COPY #{table_name} FROM '#{export_file}' CSV"
+               }.then { |x| compact_multiline_string(x) }
+    run_cmd(command)
+  end
 
   def compact_multiline_string(string)
     string.gsub(/\s+/, " ").strip
@@ -97,6 +118,10 @@ class PgDumpLite
 
   def partial_tables
     config["PARTIAL_TABLES"]
+  end
+
+  def tmp_dirname
+    config["TEMP_OUTPUT_DIRNAME"]
   end
 
   def config
