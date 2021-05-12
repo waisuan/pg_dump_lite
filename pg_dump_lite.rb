@@ -6,6 +6,7 @@ class PgDumpLite
     dest_db.exec("DROP SCHEMA public CASCADE;")
     dest_db.exec("CREATE SCHEMA public;")
     dest_db.exec("GRANT ALL ON SCHEMA public TO postgres;")
+    dest_db.exec("GRANT ALL ON SCHEMA public TO #{Config.dest_db_username};")
     dest_db.exec("GRANT ALL ON SCHEMA public TO public;")
   end
 
@@ -31,7 +32,7 @@ class PgDumpLite
       export_file = export_partial_tables_from_src(table_name, export_statement)
       import_partial_tables_into_dest(table_name, export_file)
         .then { |_| rm_file(export_file) }
-   end
+    end
     rm_tmp_dir
   end
 
@@ -80,6 +81,7 @@ class PgDumpLite
   end
 end
 
+# Run!
 pg_dump_lite = PgDumpLite.new
 pg_dump_lite.reset
 pg_dump_lite.copy_schema
