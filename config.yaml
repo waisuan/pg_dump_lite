@@ -1,0 +1,16 @@
+SRC_DB_USERNAME: postgres
+SRC_DB_HOST: localhost
+SRC_DB_NAME: roti
+SRC_DB_PASSWORD: password
+DEST_DB_USERNAME: postgres
+DEST_DB_HOST: localhost
+DEST_DB_NAME: roti_slice
+DEST_DB_PASSWORD: password
+TEMP_OUTPUT_DIRNAME: tmp
+FULL_TABLES:
+    - users
+PARTIAL_TABLES:
+    - machines: SELECT * FROM machines ORDER BY \"createdAt\" DESC LIMIT 300
+    - maintenance: >
+        SELECT * FROM maintenance WHERE \"serialNumber\" IN
+        (SELECT \"serialNumber\" FROM machines ORDER BY \"createdAt\" DESC LIMIT 300)
