@@ -17,5 +17,8 @@ DEPENDENCIES
   pry (~> 0.13.1)
   yaml
 
+RUBY VERSION
+   ruby 2.7.0p0
+
 BUNDLED WITH
    2.2.15
